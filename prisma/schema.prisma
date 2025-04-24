@@ -1,0 +1,70 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ELEVE
+  PARENT
+  ADMINISTRATION
+  PROFESSEUR
+  SUPERADMIN
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  password          String
+  role              Role      @default(ELEVE)
+  resetToken        String?
+  resetTokenExpiry  DateTime?
+  lastLogin         DateTime?
+  twoFactorEnabled  Boolean   @default(false)
+  twoFactorCode     String?   // Code à 6 chiffres envoyé par email
+  twoFactorCodeExpiry DateTime? // Date d'expiration du code
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relation with establishments
+  establishment     Establishment? @relation(name: "UserEstablishment", fields: [establishmentId], references: [id])
+  establishmentId   String?
+  
+  // For professors who can teach at multiple schools
+  teachingAt        EstablishmentProfessor[]
+}
+
+model Establishment {
+  id          String      @id @default(cuid())
+  name        String
+  code        String      @unique
+  address     String?
+  city        String?
+  zipCode     String?
+  country     String?
+  phone       String?
+  email       String?
+  website     String?
+  logo        String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Relations
+  users       User[]      @relation(name: "UserEstablishment")
+  professors  EstablishmentProfessor[]
+}
+
+// Join table for many-to-many relationship between professors and establishments
+model EstablishmentProfessor {
+  id              String        @id @default(cuid())
+  professor       User          @relation(fields: [professorId], references: [id], onDelete: Cascade)
+  professorId     String
+  establishment   Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  establishmentId String
+  createdAt       DateTime      @default(now())
+  
+  @@unique([professorId, establishmentId])
+}
