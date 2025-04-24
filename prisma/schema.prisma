@@ -35,6 +35,14 @@ model User {
   
   // For professors who can teach at multiple schools
   teachingAt        EstablishmentProfessor[]
+
+  // Relations for class management
+  studentClasses    StudentClass[]
+  taughtCourses     Course[]
+  
+  // Relations for parents
+  children          ParentChild[]
+  parentOf          ParentChild[]  @relation("ParentToChild")
 }
 
 model Establishment {
@@ -48,13 +56,15 @@ model Establishment {
   phone       String?
   email       String?
   website     String?
-  logo        String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   
   // Relations
   users       User[]      @relation(name: "UserEstablishment")
   professors  EstablishmentProfessor[]
+  
+  // Classes in this establishment
+  classes     Class[]
 }
 
 // Join table for many-to-many relationship between professors and establishments
@@ -67,4 +77,89 @@ model EstablishmentProfessor {
   createdAt       DateTime      @default(now())
   
   @@unique([professorId, establishmentId])
+}
+
+// New models for class management
+
+model Class {
+  id              String        @id @default(cuid())
+  name            String        // e.g., "6ème A", "Terminale S2"
+  level           String        // e.g., "6ème", "Terminale"
+  section         String?       // e.g., "A", "S2"
+  schoolYear      String        // e.g., "2023-2024"
+  description     String?
+  maxStudents     Int?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relation with establishment
+  establishment   Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  establishmentId String
+  
+  // Relations
+  students        StudentClass[]
+  courses         Course[]
+  
+  @@unique([name, establishmentId, schoolYear])
+}
+
+model StudentClass {
+  id              String        @id @default(cuid())
+  student         User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId       String
+  class           Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId         String
+  enrollmentDate  DateTime      @default(now())
+  status          String        @default("active") // active, inactive, graduated, etc.
+  
+  @@unique([studentId, classId])
+}
+
+model Course {
+  id              String        @id @default(cuid())
+  name            String        // e.g., "Mathématiques", "Histoire-Géographie"
+  description     String?
+  color           String?       // For UI display in schedule
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relations
+  class           Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId         String
+  professor       User          @relation(fields: [professorId], references: [id])
+  professorId     String
+  sessions        Session[]
+  
+  @@unique([name, classId, professorId])
+}
+
+model Session {
+  id              String        @id @default(cuid())
+  title           String?
+  description     String?
+  dayOfWeek       Int           // 0-6 (Sunday to Saturday)
+  startTime       DateTime
+  endTime         DateTime
+  recurrent       Boolean       @default(true)
+  room            String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relation with course
+  course          Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId        String
+}
+
+// Model for parent-child relationships
+model ParentChild {
+  id              String        @id @default(cuid())
+  parent          User          @relation("ParentToChild", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId        String
+  child           User          @relation(fields: [childId], references: [id], onDelete: Cascade)
+  childId         String
+  relationship    String?       // e.g., "father", "mother", "guardian"
+  isPrimary       Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  
+  @@unique([parentId, childId])
 }

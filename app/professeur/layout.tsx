@@ -98,9 +98,10 @@ function ProfesseurLayoutContent({
     if (status === "authenticated" && session?.user?.role === "PROFESSEUR") {
       if (!establishmentId) {
         // Ne pas rediriger ici si nous sommes déjà sur la page de sélection
+        const currentPath = window.location.pathname
         if (
-          !window.location.pathname.includes("/professeur/select-establishment") &&
-          !window.location.pathname.includes("/professeur/no-establishment")
+          !currentPath.includes("/professeur/select-establishment") &&
+          !currentPath.includes("/professeur/no-establishment")
         ) {
           router.push("/professeur/select-establishment")
         }
@@ -139,5 +140,16 @@ function ProfesseurLayoutContent({
   }
 
   // L'utilisateur est authentifié, afficher le contenu du dashboard
+  if (!currentEstablishment) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement de l'établissement...</p>
+        </div>
+      </div>
+    )
+  }
+
   return <ProfesseurShell establishment={currentEstablishment}>{children}</ProfesseurShell>
 }

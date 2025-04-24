@@ -54,7 +54,7 @@ export function EleveShell({ children }: EleveShellProps) {
   const navigation = [
     { name: "Tableau de bord", href: "/eleve", icon: BookOpen },
     { name: "Mes cours", href: "/eleve/courses", icon: GraduationCap },
-    { name: "Emploi du temps", href: "/eleve/schedule", icon: Calendar },
+    { name: "Emploi du temps", href: "/eleve/timetable", icon: Calendar },
     { name: "Notes", href: "/eleve/grades", icon: Users },
     { name: "Notifications", href: "/eleve/notifications", icon: Bell },
     { name: "Paramètres", href: "/eleve/parametres", icon: Bell },

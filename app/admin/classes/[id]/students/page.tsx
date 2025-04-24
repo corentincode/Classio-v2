@@ -2,12 +2,11 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { redirect } from "next/navigation"
 import { PrismaClient } from "@prisma/client"
-import { ClassesList } from "@/components/admin/classes-list"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ClassStudentsList } from "@/components/admin/class-students-list"
 
 const prisma = new PrismaClient()
 
-export default async function AdminClassesPage() {
+export default async function AdminClassStudentsPage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
 
   // Redirect if not authenticated
@@ -30,21 +29,23 @@ export default async function AdminClassesPage() {
     redirect("/admin/no-establishment")
   }
 
+  // Get the class details
+  const classData = await prisma.class.findUnique({
+    where: { id: params.id },
+  })
+
+  // If class doesn't exist or doesn't belong to the admin's establishment, redirect
+  if (!classData || classData.establishmentId !== user.establishmentId) {
+    redirect("/admin/classes")
+  }
+
   return (
       <div className="flex flex-col gap-6 w-full max-w-full overflow-hidden">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">Gestion des Classes</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Élèves de la classe {classData.name}</h1>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Classes</CardTitle>
-            <CardDescription>Gérez les classes de votre établissement</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ClassesList establishmentId={user.establishmentId} />
-          </CardContent>
-        </Card>
+        <ClassStudentsList classId={params.id} establishmentId={user.establishmentId} />
       </div>
   )
 }

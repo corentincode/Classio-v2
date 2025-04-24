@@ -23,6 +23,18 @@ export function ProfesseurShell({ children, establishment }: ProfesseurShellProp
   const { data: session } = useSession()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  // Vérification de sécurité pour éviter les erreurs si establishment est null
+  if (!establishment) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement de l'établissement...</p>
+        </div>
+      </div>
+    )
+  }
+
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen)
   }
@@ -30,6 +42,7 @@ export function ProfesseurShell({ children, establishment }: ProfesseurShellProp
   const navigation = [
     { name: "Tableau de bord", href: `/professeur?establishmentId=${establishment.id}`, icon: BookOpen },
     { name: "Mes classes", href: `/professeur/classes?establishmentId=${establishment.id}`, icon: Users },
+    { name: "Mes cours", href: `/professeur/courses?establishmentId=${establishment.id}`, icon: BookOpen },
     { name: "Emploi du temps", href: `/professeur/schedule?establishmentId=${establishment.id}`, icon: Calendar },
     { name: "Notifications", href: `/professeur/notifications?establishmentId=${establishment.id}`, icon: Bell },
   ]
