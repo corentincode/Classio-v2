@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import { PrismaClient } from "@prisma/client"
-
-const prisma = new PrismaClient()
+import prisma from "@/lib/prisma"
 
 // Couleurs pour les différentes matières
 const courseColors = [
@@ -30,44 +28,66 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const url = new URL(request.url)
     const establishmentId = url.searchParams.get("establishmentId")
 
-    if (!establishmentId) {
-      return NextResponse.json({ error: "ID d'établissement manquant" }, { status: 400 })
-    }
-
     // Vérifier si l'utilisateur est autorisé à accéder à ces données
     if (session.user.id !== professorId && session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 })
     }
 
-    // Récupérer tous les cours enseignés par ce professeur dans cet établissement
-    const courses = await prisma.course.findMany({
+    // Récupérer tous les cours enseignés par ce professeur
+    const coursesQuery = {
       where: {
         professorId: professorId,
+      },
+      include: {
+        class: {
+          include: {
+            establishment: true,
+            students: {
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
+        sessions: true,
+      },
+    }
+
+    // Si un establishmentId est fourni, filtrer par établissement
+    if (establishmentId) {
+      coursesQuery.where = {
+        ...coursesQuery.where,
         class: {
           establishmentId: establishmentId,
         },
-      },
-      include: {
-        class: true,
-        sessions: true,
-      },
-    })
+      }
+    }
 
-    // Formater les données pour l'emploi du temps
-    const sessions = courses.flatMap((course, index) => {
-      return course.sessions.map((session) => ({
-        id: session.id,
-        courseName: course.name,
-        className: course.class.name,
-        dayOfWeek: session.dayOfWeek,
-        startTime: session.startTime,
-        endTime: session.endTime,
-        room: session.room || "Non spécifiée",
+    const courses = await prisma.course.findMany(coursesQuery)
+
+    // Formater les données pour l'affichage
+    const formattedCourses = courses.map((course, index) => {
+      return {
+        id: course.id,
+        name: course.name,
+        description: course.description,
         color: courseColors[index % courseColors.length],
-      }))
+        class: {
+          id: course.class.id,
+          name: course.class.name,
+          level: course.class.level,
+          section: course.class.section,
+        },
+        establishment: {
+          id: course.class.establishment.id,
+          name: course.class.establishment.name,
+        },
+        sessionsCount: course.sessions.length,
+        studentsCount: course.class.students.length,
+      }
     })
 
-    return NextResponse.json(sessions)
+    return NextResponse.json(formattedCourses)
   } catch (error) {
     console.error("Erreur lors de la récupération des cours:", error)
     return NextResponse.json({ error: "Une erreur est survenue lors de la récupération des cours" }, { status: 500 })

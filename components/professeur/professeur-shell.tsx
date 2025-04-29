@@ -2,198 +2,241 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import Link from "next/link"
+import { Fragment, useState } from "react"
+import { Dialog, Transition } from "@headlessui/react"
+import { BookOpen, Users, Calendar, Bell, Menu, X, LogOut, User, BookText, ClipboardCheck, ClipboardList } from "lucide-react"
 import { usePathname } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { School, BookOpen, Calendar, Users, Bell, LogOut, Menu, X } from "lucide-react"
-import { useSession } from "next-auth/react"
+import Link from "next/link"
+import { signOut } from "next-auth/react"
 
 interface ProfesseurShellProps {
   children: React.ReactNode
   establishment: {
     id: string
     name: string
-    code: string
+  } | null
+  user: {
+    name?: string | null
+    email?: string | null
+    image?: string | null
   }
 }
 
-export function ProfesseurShell({ children, establishment }: ProfesseurShellProps) {
-  const pathname = usePathname()
-  const { data: session } = useSession()
+export function ProfesseurShell({ children, establishment, user }: ProfesseurShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const pathname = usePathname()
 
-  // Vérification de sécurité pour éviter les erreurs si establishment est null
-  if (!establishment) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement de l'établissement...</p>
-        </div>
-      </div>
-    )
-  }
-
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen)
-  }
+  // Gérer le cas où establishment est null
+  const establishmentId = establishment?.id || ""
 
   const navigation = [
-    { name: "Tableau de bord", href: `/professeur?establishmentId=${establishment.id}`, icon: BookOpen },
-    { name: "Mes classes", href: `/professeur/classes?establishmentId=${establishment.id}`, icon: Users },
-    { name: "Mes cours", href: `/professeur/courses?establishmentId=${establishment.id}`, icon: BookOpen },
-    { name: "Emploi du temps", href: `/professeur/schedule?establishmentId=${establishment.id}`, icon: Calendar },
-    { name: "Notifications", href: `/professeur/notifications?establishmentId=${establishment.id}`, icon: Bell },
+    { name: "Tableau de bord", href: `/professeur?establishmentId=${establishmentId}`, icon: BookOpen },
+    { name: "Mes cours", href: `/professeur/courses?establishmentId=${establishmentId}`, icon: BookText },
+    { name: "Mes classes", href: `/professeur/classes?establishmentId=${establishmentId}`, icon: Users },
+    { name: "Emploi du temps", href: `/professeur/schedule?establishmentId=${establishmentId}`, icon: Calendar },
+    {
+      name: "Absences & retards",
+      href: `/professeur/attendance?establishmentId=${establishmentId}`,
+      icon: ClipboardCheck,
+    },
+    { name: "Notifications", href: `/professeur/notifications?establishmentId=${establishmentId}`, icon: Bell },
+    { name: "Évaluations", href: `/professeur/evaluations?establishmentId=${establishmentId}`, icon: ClipboardList },
+  ]
+
+  const userNavigation = [
+    { name: "Votre profil", href: "/profile" },
+    { name: "Paramètres", href: "/profile/settings" },
   ]
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar pour mobile */}
-      <div
-        className={`fixed inset-0 z-40 flex md:hidden ${
-          sidebarOpen ? "visible" : "invisible"
-        } transition-opacity duration-300`}
-        onClick={toggleSidebar}
-      >
-        <div
-          className={`fixed inset-0 bg-gray-600 ${
-            sidebarOpen ? "opacity-75" : "opacity-0"
-          } transition-opacity duration-300`}
-        ></div>
-        <div
-          className={`relative flex w-full max-w-xs flex-1 flex-col bg-white pt-5 pb-4 transform ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } transition-transform duration-300 ease-in-out`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="absolute top-0 right-0 -mr-12 pt-2">
-            <button
-              className="ml-1 flex h-10 w-10 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-              onClick={toggleSidebar}
+    <>
+      <div>
+        <Transition.Root show={sidebarOpen} as={Fragment}>
+          <Dialog as="div" className="relative z-50 lg:hidden" onClose={setSidebarOpen}>
+            <Transition.Child
+              as={Fragment}
+              enter="transition-opacity ease-linear duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="transition-opacity ease-linear duration-300"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
             >
-              <X className="h-6 w-6 text-white" />
-            </button>
-          </div>
-          <div className="flex flex-shrink-0 items-center px-4">
-            <div className="flex items-center">
-              <School className="h-8 w-8 text-indigo-600" />
-              <span className="ml-2 text-xl font-semibold text-gray-900">Classio</span>
-            </div>
-          </div>
-          <div className="mt-5 h-0 flex-1 overflow-y-auto">
-            <nav className="space-y-1 px-2">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`group flex items-center px-2 py-2 text-base font-medium rounded-md ${
-                    pathname === item.href
-                      ? "bg-indigo-100 text-indigo-900"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  }`}
-                >
-                  <item.icon
-                    className={`mr-4 h-6 w-6 flex-shrink-0 ${
-                      pathname === item.href ? "text-indigo-500" : "text-gray-400 group-hover:text-gray-500"
-                    }`}
-                  />
-                  {item.name}
-                </Link>
-              ))}
-            </nav>
-          </div>
-          <div className="flex flex-shrink-0 border-t border-gray-200 p-4">
-            <div className="flex items-center">
-              <div>
-                <div className="text-base font-medium text-gray-800">{session?.user?.email}</div>
-                <div className="text-sm font-medium text-gray-500">Professeur</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+              <div className="fixed inset-0 bg-gray-900/80" />
+            </Transition.Child>
 
-      {/* Sidebar pour desktop */}
-      <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
-        <div className="flex flex-col flex-grow border-r border-gray-200 bg-white pt-5 overflow-y-auto">
-          <div className="flex items-center flex-shrink-0 px-4">
-            <School className="h-8 w-8 text-indigo-600" />
-            <span className="ml-2 text-xl font-semibold text-gray-900">Classio</span>
-          </div>
-          <div className="mt-5 flex-grow flex flex-col">
-            <nav className="flex-1 space-y-1 px-2 pb-4">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
-                    pathname === item.href
-                      ? "bg-indigo-100 text-indigo-900"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  }`}
-                >
-                  <item.icon
-                    className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                      pathname === item.href ? "text-indigo-500" : "text-gray-400 group-hover:text-gray-500"
-                    }`}
-                  />
-                  {item.name}
-                </Link>
-              ))}
-            </nav>
-          </div>
-          <div className="flex flex-shrink-0 border-t border-gray-200 p-4">
-            <div className="flex items-center">
-              <div>
-                <div className="text-sm font-medium text-gray-800">{session?.user?.email}</div>
-                <div className="text-xs font-medium text-gray-500">Professeur</div>
-                <Link href="/auth/signout">
-                  <Button variant="ghost" size="sm" className="mt-2 w-full justify-start text-red-600 px-2">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Se déconnecter
-                  </Button>
-                </Link>
-              </div>
+            <div className="fixed inset-0 flex">
+              <Transition.Child
+                as={Fragment}
+                enter="transition ease-in-out duration-300 transform"
+                enterFrom="-translate-x-full"
+                enterTo="translate-x-0"
+                leave="transition ease-in-out duration-300 transform"
+                leaveFrom="translate-x-0"
+                leaveTo="-translate-x-full"
+              >
+                <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
+                  <Transition.Child
+                    as={Fragment}
+                    enter="ease-in-out duration-300"
+                    enterFrom="opacity-0"
+                    enterTo="opacity-100"
+                    leave="ease-in-out duration-300"
+                    leaveFrom="opacity-100"
+                    leaveTo="opacity-0"
+                  >
+                    <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
+                      <button type="button" className="-m-2.5 p-2.5" onClick={() => setSidebarOpen(false)}>
+                        <span className="sr-only">Fermer le menu</span>
+                        <X className="h-6 w-6 text-white" aria-hidden="true" />
+                      </button>
+                    </div>
+                  </Transition.Child>
+                  <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4">
+                    <div className="flex h-16 shrink-0 items-center">
+                      <Link href="/" className="flex items-center space-x-2">
+                        <BookOpen className="h-8 w-8 text-blue-600" />
+                        <span className="text-xl font-bold">Classio</span>
+                      </Link>
+                    </div>
+                    <nav className="flex flex-1 flex-col">
+                      <ul role="list" className="flex flex-1 flex-col gap-y-7">
+                        <li>
+                          <ul role="list" className="-mx-2 space-y-1">
+                            {navigation.map((item) => (
+                              <li key={item.name}>
+                                <Link
+                                  href={item.href}
+                                  className={`
+                                    group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6
+                                    ${
+                                      pathname === item.href
+                                        ? "bg-gray-50 text-blue-600"
+                                        : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
+                                    }
+                                  `}
+                                >
+                                  <item.icon
+                                    className={`h-6 w-6 shrink-0 ${
+                                      pathname === item.href
+                                        ? "text-blue-600"
+                                        : "text-gray-400 group-hover:text-blue-600"
+                                    }`}
+                                    aria-hidden="true"
+                                  />
+                                  {item.name}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </li>
+                        <li className="mt-auto">
+                          <button
+                            onClick={() => signOut({ callbackUrl: "/" })}
+                            className="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-gray-700 hover:bg-gray-50 hover:text-blue-600"
+                          >
+                            <LogOut
+                              className="h-6 w-6 shrink-0 text-gray-400 group-hover:text-blue-600"
+                              aria-hidden="true"
+                            />
+                            Déconnexion
+                          </button>
+                        </li>
+                      </ul>
+                    </nav>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
             </div>
-          </div>
-        </div>
-      </div>
+          </Dialog>
+        </Transition.Root>
 
-      {/* Contenu principal */}
-      <div className="md:pl-64 flex flex-col flex-1">
-        <div className="sticky top-0 z-10 flex h-16 flex-shrink-0 bg-white shadow">
-          <button
-            type="button"
-            className="border-r border-gray-200 px-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 md:hidden"
-            onClick={toggleSidebar}
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          <div className="flex flex-1 justify-between px-4">
-            <div className="flex flex-1 items-center">
-              <div className="flex items-center">
-                <School className="h-5 w-5 text-indigo-500 mr-2" />
-                <span className="font-medium text-gray-900">{establishment.name}</span>
-                <span className="ml-2 text-sm text-gray-500">({establishment.code})</span>
-              </div>
-            </div>
-            <div className="ml-4 flex items-center md:ml-6">
-              <Link href="/professeur/select-establishment">
-                <Button variant="outline" size="sm">
-                  Changer d'établissement
-                </Button>
+        {/* Static sidebar for desktop */}
+        <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
+          <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 pb-4">
+            <div className="flex h-16 shrink-0 items-center">
+              <Link href="/" className="flex items-center space-x-2">
+                <BookOpen className="h-8 w-8 text-blue-600" />
+                <span className="text-xl font-bold">Classio</span>
               </Link>
             </div>
+            <nav className="flex flex-1 flex-col">
+              <ul role="list" className="flex flex-1 flex-col gap-y-7">
+                <li>
+                  <ul role="list" className="-mx-2 space-y-1">
+                    {navigation.map((item) => (
+                      <li key={item.name}>
+                        <Link
+                          href={item.href}
+                          className={`
+                            group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6
+                            ${
+                              pathname === item.href
+                                ? "bg-gray-50 text-blue-600"
+                                : "text-gray-700 hover:bg-gray-50 hover:text-blue-600"
+                            }
+                          `}
+                        >
+                          <item.icon
+                            className={`h-6 w-6 shrink-0 ${
+                              pathname === item.href ? "text-blue-600" : "text-gray-400 group-hover:text-blue-600"
+                            }`}
+                            aria-hidden="true"
+                          />
+                          {item.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+                <li className="mt-auto">
+                  <button
+                    onClick={() => signOut({ callbackUrl: "/" })}
+                    className="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-gray-700 hover:bg-gray-50 hover:text-blue-600"
+                  >
+                    <LogOut className="h-6 w-6 shrink-0 text-gray-400 group-hover:text-blue-600" aria-hidden="true" />
+                    Déconnexion
+                  </button>
+                </li>
+              </ul>
+            </nav>
           </div>
         </div>
 
-        <main className="flex-1">
-          <div className="py-6">
-            <div className="mx-auto px-4 sm:px-6 md:px-8">{children}</div>
+        <div className="lg:pl-72">
+          <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+            <button type="button" className="-m-2.5 p-2.5 text-gray-700 lg:hidden" onClick={() => setSidebarOpen(true)}>
+              <span className="sr-only">Ouvrir le menu</span>
+              <Menu className="h-6 w-6" aria-hidden="true" />
+            </button>
+
+            {/* Separator */}
+            <div className="h-6 w-px bg-gray-200 lg:hidden" aria-hidden="true" />
+
+            <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
+              <div className="flex items-center gap-x-4 lg:gap-x-6 ml-auto">
+                {/* Profile dropdown */}
+                <div className="relative">
+                  <div className="flex items-center gap-x-3">
+                    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-gray-500 text-white">
+                      {user?.name ? user.name.charAt(0).toUpperCase() : <User className="h-5 w-5" />}
+                    </div>
+                    <span className="hidden lg:flex lg:items-center">
+                      <span className="text-sm font-semibold leading-6 text-gray-900" aria-hidden="true">
+                        {user?.name || user?.email || "Utilisateur"}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </main>
+
+          <main className="py-10">
+            <div className="px-4 sm:px-6 lg:px-8">{children}</div>
+          </main>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

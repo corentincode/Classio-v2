@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { School, BookOpen, Calendar, Users, Bell, LogOut, Menu, X, GraduationCap } from "lucide-react"
+import { School, BookOpen, Calendar, Users, LogOut, Menu, X, ClipboardCheck, ClipboardList } from "lucide-react"
 import { useSession } from "next-auth/react"
 
 interface EleveShellProps {
@@ -53,11 +53,10 @@ export function EleveShell({ children }: EleveShellProps) {
 
   const navigation = [
     { name: "Tableau de bord", href: "/eleve", icon: BookOpen },
-    { name: "Mes cours", href: "/eleve/courses", icon: GraduationCap },
     { name: "Emploi du temps", href: "/eleve/timetable", icon: Calendar },
-    { name: "Notes", href: "/eleve/grades", icon: Users },
-    { name: "Notifications", href: "/eleve/notifications", icon: Bell },
-    { name: "Paramètres", href: "/eleve/parametres", icon: Bell },
+    { name: "Absences & retards", href: "/eleve/attendance", icon: ClipboardCheck },
+    { name: "Profil", href: "/profile", icon: Users },
+    { name: "Notes",  href: "/eleve/grades", icon: ClipboardList },
   ]
 
   return (

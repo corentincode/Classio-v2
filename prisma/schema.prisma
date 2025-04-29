@@ -15,10 +15,37 @@ enum Role {
   SUPERADMIN
 }
 
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum EvaluationType {
+  CONTROLE
+  DEVOIR
+  EXAMEN
+  TP
+  ORAL
+  PROJET
+  AUTRE
+}
+
+enum Period {
+  TRIMESTRE_1
+  TRIMESTRE_2
+  TRIMESTRE_3
+  SEMESTRE_1
+  SEMESTRE_2
+  ANNEE
+}
+
 model User {
   id                String    @id @default(cuid())
   email             String    @unique
   password          String
+  name              String?
   role              Role      @default(ELEVE)
   resetToken        String?
   resetTokenExpiry  DateTime?
@@ -43,6 +70,15 @@ model User {
   // Relations for parents
   children          ParentChild[]
   parentOf          ParentChild[]  @relation("ParentToChild")
+  
+  // Relations for attendance
+  attendanceRecords AttendanceRecord[] @relation("StudentAttendance")
+  recordedAttendance AttendanceRecord[] @relation("TeacherRecorded")
+  
+  // Relations for grades
+  studentGrades     Grade[] @relation("StudentGrades")
+  gradedBy          Grade[] @relation("TeacherGraded")
+  createdEvaluations Evaluation[] @relation("TeacherCreatedEvaluation")
 }
 
 model Establishment {
@@ -65,6 +101,9 @@ model Establishment {
   
   // Classes in this establishment
   classes     Class[]
+  
+  // Periods configuration
+  periodConfig PeriodConfig[]
 }
 
 // Join table for many-to-many relationship between professors and establishments
@@ -120,6 +159,7 @@ model Course {
   name            String        // e.g., "Mathématiques", "Histoire-Géographie"
   description     String?
   color           String?       // For UI display in schedule
+  coefficient     Float         @default(1.0) // Coefficient for grade calculation
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   
@@ -129,6 +169,12 @@ model Course {
   professor       User          @relation(fields: [professorId], references: [id])
   professorId     String
   sessions        Session[]
+  
+  // Relation for attendance
+  attendanceRecords AttendanceRecord[]
+  
+  // Relation for evaluations
+  evaluations     Evaluation[]
   
   @@unique([name, classId, professorId])
 }
@@ -148,6 +194,9 @@ model Session {
   // Relation with course
   course          Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
   courseId        String
+  
+  // Relation for attendance
+  attendanceRecords AttendanceRecord[]
 }
 
 // Model for parent-child relationships
@@ -162,4 +211,96 @@ model ParentChild {
   createdAt       DateTime      @default(now())
   
   @@unique([parentId, childId])
+}
+
+// New model for attendance management
+model AttendanceRecord {
+  id              String           @id @default(cuid())
+  date            DateTime
+  status          AttendanceStatus
+  minutesLate     Int?             // For late status, how many minutes late
+  reason          String?          // Reason for absence or lateness
+  excuseNote      String?          // Note for excused absences
+  excuseDocumentUrl String?        // URL to uploaded excuse document
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  // Relations
+  student         User             @relation("StudentAttendance", fields: [studentId], references: [id], onDelete: Cascade)
+  studentId       String
+  recordedBy      User             @relation("TeacherRecorded", fields: [recordedById], references: [id])
+  recordedById    String
+  course          Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId        String
+  session         Session?         @relation(fields: [sessionId], references: [id])
+  sessionId       String?
+  
+  @@unique([studentId, courseId, date])
+}
+
+// New models for grades and evaluations
+
+model PeriodConfig {
+  id              String        @id @default(cuid())
+  period          Period
+  name            String        // Custom name for the period
+  startDate       DateTime
+  endDate         DateTime
+  schoolYear      String        // e.g., "2023-2024"
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relation with establishment
+  establishment   Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  establishmentId String
+  
+  // Relation with evaluations
+  evaluations     Evaluation[]
+  
+  @@unique([period, schoolYear, establishmentId])
+}
+
+model Evaluation {
+  id              String        @id @default(cuid())
+  title           String
+  description     String?
+  type            EvaluationType
+  date            DateTime
+  maxGrade        Float         @default(20.0)
+  coefficient     Float         @default(1.0)
+  isPublished     Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relations
+  course          Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId        String
+  createdBy       User          @relation("TeacherCreatedEvaluation", fields: [createdById], references: [id])
+  createdById     String
+  period          PeriodConfig? @relation(fields: [periodId], references: [id])
+  periodId        String?
+  
+  // Relation with grades
+  grades          Grade[]
+}
+
+model Grade {
+  id              String        @id @default(cuid())
+  value           Float
+  comment         String?
+  isAbsent        Boolean       @default(false)
+  isExcused       Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relations
+  student         User          @relation("StudentGrades", fields: [studentId], references: [id], onDelete: Cascade)
+  studentId       String
+  evaluation      Evaluation    @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  evaluationId    String
+  gradedBy        User          @relation("TeacherGraded", fields: [gradedById], references: [id])
+  gradedById      String
+  
+  @@unique([studentId, evaluationId])
 }

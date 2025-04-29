@@ -14,9 +14,11 @@ export async function GET(request: Request, { params }: { params: { id: string; 
   }
 
   try {
+    const { id, classId } = params
+
     // Vérifier si la classe existe
     const classData = await prisma.class.findUnique({
-      where: { id: params.classId },
+      where: { id: classId },
     })
 
     if (!classData) {
@@ -24,7 +26,7 @@ export async function GET(request: Request, { params }: { params: { id: string; 
     }
 
     // Vérifier si la classe appartient à l'établissement spécifié
-    if (classData.establishmentId !== params.id) {
+    if (classData.establishmentId !== id) {
       return NextResponse.json({ error: "Class does not belong to the specified establishment" }, { status: 400 })
     }
 
@@ -51,8 +53,8 @@ export async function GET(request: Request, { params }: { params: { id: string; 
     const hasAccess =
       user.role === "SUPERADMIN" ||
       user.role === "ADMINISTRATION" ||
-      user.establishmentId === params.id ||
-      user.teachingAt.some((t) => t.establishmentId === params.id)
+      user.establishmentId === id ||
+      user.teachingAt.some((t) => t.establishmentId === id)
 
     if (!hasAccess) {
       return NextResponse.json({ error: "Not authorized to access this class" }, { status: 403 })
@@ -60,7 +62,7 @@ export async function GET(request: Request, { params }: { params: { id: string; 
 
     // Récupérer les étudiants de la classe
     const students = await prisma.studentClass.findMany({
-      where: { classId: params.classId },
+      where: { classId: classId },
       include: {
         student: {
           select: {
@@ -89,6 +91,8 @@ export async function POST(request: Request, { params }: { params: { id: string;
   }
 
   try {
+    const { id, classId } = params
+
     // Vérifier si l'utilisateur est admin ou administration
     const user = await prisma.user.findUnique({
       where: { email: session.user?.email as string },
@@ -101,7 +105,7 @@ export async function POST(request: Request, { params }: { params: { id: string;
 
     // Vérifier si la classe existe
     const classData = await prisma.class.findUnique({
-      where: { id: params.classId },
+      where: { id: classId },
     })
 
     if (!classData) {
@@ -109,7 +113,7 @@ export async function POST(request: Request, { params }: { params: { id: string;
     }
 
     // Vérifier si la classe appartient à l'établissement spécifié
-    if (classData.establishmentId !== params.id) {
+    if (classData.establishmentId !== id) {
       return NextResponse.json({ error: "Class does not belong to the specified establishment" }, { status: 400 })
     }
 
@@ -138,7 +142,7 @@ export async function POST(request: Request, { params }: { params: { id: string;
       where: {
         studentId_classId: {
           studentId,
-          classId: params.classId,
+          classId,
         },
       },
     })
@@ -150,7 +154,7 @@ export async function POST(request: Request, { params }: { params: { id: string;
     // Vérifier si la classe a atteint sa capacité maximale
     if (classData.maxStudents) {
       const currentStudentsCount = await prisma.studentClass.count({
-        where: { classId: params.classId },
+        where: { classId },
       })
 
       if (currentStudentsCount >= classData.maxStudents) {
@@ -162,16 +166,16 @@ export async function POST(request: Request, { params }: { params: { id: string;
     const enrollment = await prisma.studentClass.create({
       data: {
         studentId,
-        classId: params.classId,
+        classId,
         status: status || "active",
       },
     })
 
     // Mettre à jour l'établissement de l'étudiant si nécessaire
-    if (student.establishmentId !== params.id) {
+    if (student.establishmentId !== id) {
       await prisma.user.update({
         where: { id: studentId },
-        data: { establishmentId: params.id },
+        data: { establishmentId: id },
       })
     }
 

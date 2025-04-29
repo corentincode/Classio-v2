@@ -1,11 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Users, Clock, BookOpen, Search } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Users, Clock, BookOpen, Search } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 
@@ -38,23 +38,30 @@ interface ProfesseurCoursesListProps {
 
 export function ProfesseurCoursesList({ userId }: ProfesseurCoursesListProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const establishmentId = searchParams.get("establishmentId")
+
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedEstablishment, setSelectedEstablishment] = useState<string>("all")
-  
+  const [selectedEstablishment, setSelectedEstablishment] = useState<string>(establishmentId || "all")
+
   // Récupérer les cours enseignés par le professeur
   useEffect(() => {
     const fetchCourses = async () => {
       try {
         setLoading(true)
-        const response = await fetch(`/api/professors/${userId}/courses`)
-        
+        const url = establishmentId
+          ? `/api/professors/${userId}/courses?establishmentId=${establishmentId}`
+          : `/api/professors/${userId}/courses`
+
+        const response = await fetch(url)
+
         if (!response.ok) {
           throw new Error("Impossible de charger les cours")
         }
-        
+
         const data = await response.json()
         setCourses(data)
       } catch (error) {
@@ -64,44 +71,40 @@ export function ProfesseurCoursesList({ userId }: ProfesseurCoursesListProps) {
         setLoading(false)
       }
     }
-    
+
     fetchCourses()
-  }, [userId])
-  
+  }, [userId, establishmentId])
+
   // Obtenir la liste des établissements
   const establishments = courses.reduce((acc: Establishment[], course) => {
-    if (!acc.some(e => e.id === course.establishment.id)) {
+    if (!acc.some((e) => e.id === course.establishment.id)) {
       acc.push(course.establishment)
     }
     return acc
   }, [])
-  
+
   // Filtrer les cours en fonction du terme de recherche et de l'établissement sélectionné
-  const filteredCourses = courses.filter(course => {
-    const matchesSearch = (
+  const filteredCourses = courses.filter((course) => {
+    const matchesSearch =
       course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.class.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (course.description && course.description.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
-    
-    const matchesEstablishment = selectedEstablishment === "all" || 
-      course.establishment.id === selectedEstablishment
-    
+
+    const matchesEstablishment = selectedEstablishment === "all" || course.establishment.id === selectedEstablishment
+
     return matchesSearch && matchesEstablishment
   })
-  
+
   if (loading) {
     return <div>Chargement des cours...</div>
   }
-  
+
   if (error) {
     return <div className="text-red-500">{error}</div>
   }
-  
+
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Mes cours</h1>
-      
       <div className="flex flex-wrap items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -112,12 +115,16 @@ export function ProfesseurCoursesList({ userId }: ProfesseurCoursesListProps) {
             className="pl-8"
           />
         </div>
-        
+
         {establishments.length > 1 && (
-          <Tabs defaultValue="all" value={selectedEstablishment} onValueChange={setSelectedEstablishment}>
+          <Tabs
+            defaultValue={selectedEstablishment}
+            value={selectedEstablishment}
+            onValueChange={setSelectedEstablishment}
+          >
             <TabsList>
               <TabsTrigger value="all">Tous</TabsTrigger>
-              {establishments.map(establishment => (
+              {establishments.map((establishment) => (
                 <TabsTrigger key={establishment.id} value={establishment.id}>
                   {establishment.name}
                 </TabsTrigger>
@@ -126,7 +133,7 @@ export function ProfesseurCoursesList({ userId }: ProfesseurCoursesListProps) {
           </Tabs>
         )}
       </div>
-      
+
       {filteredCourses.length === 0 ? (
         <Card className="p-8 text-center">
           <div className="text-muted-foreground">
@@ -135,25 +142,20 @@ export function ProfesseurCoursesList({ userId }: ProfesseurCoursesListProps) {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredCourses.map(course => (
-            <Link 
-              key={course.id} 
-              href={`/professeur/courses/${course.id}`}
+          {filteredCourses.map((course) => (
+            <Link
+              key={course.id}
+              href={`/professeur/courses/${course.id}?establishmentId=${establishmentId || course.establishment.id}`}
               className="block"
             >
               <Card className="h-full hover:shadow-md transition-shadow duration-200">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <Badge variant="outline">{course.establishment.name}</Badge>
-                    <div 
-                      className="h-3 w-3 rounded-full" 
-                      style={{ backgroundColor: course.color || "#cbd5e1" }}
-                    />
+                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: course.color || "#cbd5e1" }} />
                   </div>
                   <CardTitle className="mt-2">{course.name}</CardTitle>
-                  <CardDescription>
-                    Classe: {course.class.name}
-                  </CardDescription>
+                  <CardDescription>Classe: {course.class.name}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-col space-y-2 text-sm">

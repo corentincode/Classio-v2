@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { School, Home, Calendar, Users, MessageSquare, LogOut, Menu, X } from "lucide-react"
+import { School, Home, LogOut, Menu, X, ClipboardCheck, ClipboardList } from "lucide-react"
 import { useSession } from "next-auth/react"
 
 interface ParentShellProps {
@@ -53,9 +53,9 @@ export function ParentShell({ children }: ParentShellProps) {
 
   const navigation = [
     { name: "Tableau de bord", href: "/parent", icon: Home },
-    { name: "Enfants", href: "/parent/children", icon: Users },
-    { name: "Événements", href: "/parent/events", icon: Calendar },
-    { name: "Messages", href: "/parent/messages", icon: MessageSquare },
+    { name: "Absences & retards", href: "/parent/attendance", icon: ClipboardCheck },
+    { name: "Enfants", href: "/parent/children", icon: ClipboardCheck },
+    { name: "Notes",  href: "/parent/grades", icon: ClipboardList },
   ]
 
   return (

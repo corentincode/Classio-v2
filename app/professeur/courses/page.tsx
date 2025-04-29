@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { redirect } from "next/navigation"
-import { ProfesseurTimetable } from "@/components/professeur/professeur-timetable"
+import { ProfesseurCoursesList } from "@/components/professeur/professeur-courses-list"
 
 export default async function ProfesseurCoursesPage({
   searchParams,
@@ -24,8 +24,8 @@ export default async function ProfesseurCoursesPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Mon emploi du temps</h1>
-      <ProfesseurTimetable userId={session.user.id} establishmentId={establishmentId} />
+      <h1 className="text-2xl font-bold">Mes cours</h1>
+      <ProfesseurCoursesList userId={session.user.id} />
     </div>
   )
 }

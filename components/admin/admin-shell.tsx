@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { School, LayoutDashboard, Users, BookOpen, Settings, LogOut, Menu, X, Building } from "lucide-react"
+import { School, LayoutDashboard, Users, BookOpen, LogOut, Menu, X, Building, ClipboardCheck, Calendar } from "lucide-react"
 import { useSession } from "next-auth/react"
 
 interface AdminShellProps {
@@ -53,9 +53,11 @@ export function AdminShell({ children }: AdminShellProps) {
 
   const navigation = [
     { name: "Tableau de bord", href: "/admin", icon: LayoutDashboard },
-    { name: "Utilisateurs", href: "/admin/users", icon: Users },
     { name: "Classes", href: "/admin/classes", icon: BookOpen },
-    { name: "Paramètres", href: "/admin/settings", icon: Settings },
+    { name: "Absences & retards", href: "/admin/attendance", icon: ClipboardCheck },
+    { name: "Profil", href: "/profile", icon: Users },
+    { name: "Périodes", href: "/admin/periods", icon: Users },
+    { name: "Parents/Eleves", href: "/admin/parent-child", icon: Users },
   ]
 
   return (

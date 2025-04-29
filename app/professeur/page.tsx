@@ -1,68 +1,146 @@
-import type { Metadata } from "next"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { redirect } from "next/navigation"
+import { PrismaClient } from "@prisma/client"
+import { ProfesseurDashboardClient } from "@/components/professeur/professeur-dashboard-client"
 
-export const metadata: Metadata = {
-  title: "Espace Professeur | Classio",
-  description: "Gérez vos cours et vos élèves",
-}
+const prisma = new PrismaClient()
 
-export default function ProfesseurDashboard() {
+export default async function ProfesseurDashboard({
+  searchParams,
+}: {
+  searchParams: { establishmentId?: string }
+}) {
+  const session = await getServerSession(authOptions)
+
+  if (!session) {
+    redirect("/auth/signin")
+  }
+
+  if (session.user.role !== "PROFESSEUR") {
+    redirect("/")
+  }
+
+  const { establishmentId } = searchParams
+
+  if (!establishmentId) {
+    redirect("/professeur/select-establishment")
+  }
+
+  // Récupérer l'ID de l'utilisateur
+  const user = await prisma.user.findUnique({
+    where: { email: session.user?.email as string },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+    },
+  })
+
+  if (!user) {
+    redirect("/auth/signin")
+  }
+
+  // Vérifier si le professeur a accès à cet établissement
+  const professorEstablishment = await prisma.establishmentProfessor.findFirst({
+    where: {
+      professorId: user.id,
+      establishmentId: establishmentId,
+    },
+  })
+
+  if (!professorEstablishment) {
+    redirect("/professeur/select-establishment")
+  }
+
+  // Récupérer les cours du professeur dans cet établissement
+  const courses = await prisma.course.findMany({
+    where: {
+      professorId: user.id,
+      class: {
+        establishmentId: establishmentId,
+      },
+    },
+    include: {
+      class: true,
+      sessions: {
+        where: {
+          startTime: {
+            gte: new Date(),
+          },
+        },
+        orderBy: {
+          startTime: "asc",
+        },
+        take: 5,
+      },
+      evaluations: {
+        where: {
+          date: {
+            gte: new Date(),
+          },
+        },
+        orderBy: {
+          date: "asc",
+        },
+        take: 5,
+      },
+    },
+  })
+
+  // Récupérer les statistiques d'assiduité
+  const attendanceStats = await prisma.attendanceRecord.groupBy({
+    by: ["status"],
+    where: {
+      recordedById: user.id,
+      date: {
+        gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 derniers jours
+      },
+      course: {
+        professorId: user.id,
+        class: {
+          establishmentId: establishmentId,
+        },
+      },
+    },
+    _count: {
+      status: true,
+    },
+  })
+
+  // Récupérer les classes du professeur
+  const classes = await prisma.class.findMany({
+    where: {
+      establishmentId: establishmentId,
+      courses: {
+        some: {
+          professorId: user.id,
+        },
+      },
+    },
+    include: {
+      _count: {
+        select: {
+          students: true,
+        },
+      },
+    },
+  })
+
+  // Récupérer l'établissement
+  const establishment = await prisma.establishment.findUnique({
+    where: {
+      id: establishmentId,
+    },
+  })
+
   return (
-    <div className="flex flex-col w-full max-w-full overflow-hidden">
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold tracking-tight">Tableau de bord</h2>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Mes classes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">Liste des classes que vous enseignez</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Emploi du temps</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">Votre emploi du temps pour la semaine</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Devoirs à corriger</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">Devoirs en attente de correction</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Prochains cours</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">Vos prochains cours à venir</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Annonces</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">Dernières annonces de l'établissement</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
+    <ProfesseurDashboardClient
+      user={user}
+      courses={courses}
+      attendanceStats={attendanceStats}
+      classes={classes}
+      establishment={establishment}
+    />
   )
 }

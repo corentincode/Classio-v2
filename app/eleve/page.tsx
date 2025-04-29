@@ -1,82 +1,147 @@
-import type { Metadata } from "next"
-import { Button } from "@/components/ui/button"
-import { ArrowRight, ArrowUpRight, Calendar, Plus } from "lucide-react"
-import { TimeTable } from "@/components/eleve/time-table"
-import { CoursesList } from "@/components/eleve/courses-list"
-import { UpcomingAssignments } from "@/components/eleve/upcoming-assignments"
-import { RecentGrades } from "@/components/eleve/recent-grades"
-import { Announcements } from "@/components/eleve/announcements"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "../api/auth/[...nextauth]/route"
+import { redirect } from "next/navigation"
+import { PrismaClient } from "@prisma/client"
+import { EleveDashboardClient } from "@/components/eleve/eleve-dashboard-client"
 
-export const metadata: Metadata = {
-  title: "Classio - Espace Élève",
-  description: "Votre espace personnel sur la plateforme Classio",
-}
+const prisma = new PrismaClient()
 
-export default function ElevePage() {
+export default async function EleveDashboard() {
+  const session = await getServerSession(authOptions)
+
+  if (!session) {
+    redirect("/auth/signin")
+  }
+
+  // Récupérer l'ID de l'utilisateur
+  const user = await prisma.user.findUnique({
+    where: { email: session.user?.email as string },
+    select: {
+      id: true,
+      establishmentId: true,
+      name: true,
+      email: true,
+      studentClasses: {
+        include: {
+          class: true,
+        },
+      },
+    },
+  })
+
+  if (!user) {
+    redirect("/auth/signin")
+  }
+
+  if (!user.establishmentId) {
+    redirect("/eleve/no-establishment")
+  }
+
+  // Vérifier si l'élève est dans une classe
+  if (!user.studentClasses || user.studentClasses.length === 0) {
+    redirect("/eleve/no-class")
+  }
+
+  // Utiliser la première classe de l'élève
+  const studentClass = user.studentClasses[0].class
+
+  // Récupérer les cours de l'élève
+  const courses = await prisma.course.findMany({
+    where: {
+      classId: studentClass.id,
+    },
+    include: {
+      professor: true,
+      sessions: {
+        where: {
+          startTime: {
+            gte: new Date(),
+          },
+        },
+        orderBy: {
+          startTime: "asc",
+        },
+        take: 5,
+      },
+    },
+  })
+
+  // Récupérer les notes récentes
+  const recentGrades = await prisma.grade.findMany({
+    where: {
+      studentId: user.id,
+    },
+    include: {
+      evaluation: {
+        include: {
+          course: true,
+        },
+      },
+    },
+    orderBy: {
+      updatedAt: "desc",
+    },
+    take: 5,
+  })
+
+  // Récupérer les statistiques d'assiduité
+  const attendanceStats = await prisma.attendanceRecord.groupBy({
+    by: ["status"],
+    where: {
+      studentId: user.id,
+      date: {
+        gte: new Date(new Date().setDate(new Date().getDate() - 30)), // 30 derniers jours
+      },
+    },
+    _count: {
+      id: true,
+    },
+  })
+
+  // Calculer le taux de présence
+  const totalAttendance = attendanceStats.reduce((acc, stat) => acc + stat._count.id, 0)
+  const presentCount = attendanceStats.find((stat) => stat.status === "PRESENT")?._count.id || 0
+  const attendanceRate = totalAttendance > 0 ? (presentCount / totalAttendance) * 100 : 100
+
+  // Récupérer les prochaines évaluations
+  const upcomingEvaluations = await prisma.evaluation.findMany({
+    where: {
+      course: {
+        classId: studentClass.id,
+      },
+      date: {
+        gte: new Date(),
+      },
+    },
+    include: {
+      course: true,
+    },
+    orderBy: {
+      date: "asc",
+    },
+    take: 5,
+  })
+
   return (
-    <div className="flex flex-col lg:flex-row gap-6 w-full max-w-full">
-      {/* Colonne principale */}
-      <div className="flex-1 flex flex-col gap-6">
-        {/* En-tête avec moyenne générale */}
-        <div>
-          <p className="text-sm text-gray-500 mb-1">Moyenne générale</p>
-          <div className="flex items-baseline">
-            <h1 className="text-4xl font-bold tracking-tight">14.5/20</h1>
-            <span className="ml-2 text-sm font-medium text-green-600 flex items-center">
-              <ArrowUpRight className="h-3 w-3 mr-1" />
-              +0.8
-            </span>
-          </div>
+    <div className="flex flex-col w-full max-w-full overflow-hidden">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-3xl font-bold tracking-tight">Tableau de bord</h2>
         </div>
 
-        {/* Emploi du temps */}
-        <TimeTable />
-
-        {/* Mes cours */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Mes cours</h2>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500">
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          <CoursesList />
-        </div>
-
-        {/* Devoirs à venir */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Devoirs à venir</h2>
-            <Button variant="outline" size="sm" className="h-8 gap-1 text-gray-500 border-gray-300">
-              <Calendar className="h-3.5 w-3.5" />
-              <span>Cette semaine</span>
-            </Button>
-          </div>
-          <UpcomingAssignments />
-        </div>
-      </div>
-
-      {/* Colonne latérale droite */}
-      <div className="w-full lg:w-80 flex-shrink-0 flex flex-col gap-6">
-        {/* Annonces */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Annonces</h2>
-          <Announcements />
-        </div>
-
-        {/* Notes récentes */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Notes récentes</h2>
-          <RecentGrades />
-        </div>
-
-        {/* Bouton nouveau message */}
-        <Button className="w-full gap-2 mt-auto bg-black text-white hover:bg-gray-800">
-          <Plus className="h-4 w-4" />
-          Nouveau message
-        </Button>
+        <EleveDashboardClient
+          student={{
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            class: studentClass,
+          }}
+          courses={courses}
+          recentGrades={recentGrades}
+          attendanceRate={attendanceRate}
+          totalAttendance={totalAttendance}
+          upcomingEvaluations={upcomingEvaluations}
+        />
       </div>
     </div>
   )

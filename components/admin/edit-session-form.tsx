@@ -18,6 +18,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/use-toast"
+import { format } from "date-fns"
+import { fr } from "date-fns/locale"
+import { CalendarIcon } from "lucide-react"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 
 type Session = {
   id: string
@@ -58,6 +64,11 @@ export function EditSessionForm({
     recurrent: sessionData.recurrent,
     room: sessionData.room || "",
   })
+
+  const [specificDate, setSpecificDate] = useState<Date | undefined>(
+    !sessionData.recurrent ? new Date(sessionData.startTime) : undefined,
+  )
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -100,14 +111,46 @@ export function EditSessionForm({
 
     try {
       // Convertir les heures en dates complètes pour l'API
-      const today = new Date()
-      const startDate = new Date(today)
-      const [startHours, startMinutes] = formData.startTime.split(":")
-      startDate.setHours(Number.parseInt(startHours), Number.parseInt(startMinutes), 0, 0)
+      let startDate: Date
+      let endDate: Date
+      let dayNumber: number
 
-      const endDate = new Date(today)
-      const [endHours, endMinutes] = formData.endTime.split(":")
-      endDate.setHours(Number.parseInt(endHours), Number.parseInt(endMinutes), 0, 0)
+      if (formData.recurrent) {
+        // Pour les sessions récurrentes, on utilise la date du jour pour stocker l'heure
+        const today = new Date()
+        startDate = new Date(today)
+        const [startHours, startMinutes] = formData.startTime.split(":")
+        startDate.setHours(Number.parseInt(startHours), Number.parseInt(startMinutes), 0, 0)
+
+        endDate = new Date(today)
+        const [endHours, endMinutes] = formData.endTime.split(":")
+        endDate.setHours(Number.parseInt(endHours), Number.parseInt(endMinutes), 0, 0)
+
+        dayNumber = Number.parseInt(formData.dayOfWeek)
+      } else {
+        // Pour les sessions uniques, on utilise la date spécifique sélectionnée
+        if (!specificDate) {
+          toast({
+            title: "Erreur",
+            description: "Veuillez sélectionner une date pour cette session unique",
+            variant: "destructive",
+          })
+          setLoading(false)
+          return
+        }
+
+        // Créer des dates avec la date spécifique et les heures sélectionnées
+        startDate = new Date(specificDate)
+        const [startHours, startMinutes] = formData.startTime.split(":")
+        startDate.setHours(Number.parseInt(startHours), Number.parseInt(startMinutes), 0, 0)
+
+        endDate = new Date(specificDate)
+        const [endHours, endMinutes] = formData.endTime.split(":")
+        endDate.setHours(Number.parseInt(endHours), Number.parseInt(endMinutes), 0, 0)
+
+        // Pour les sessions uniques, le jour de la semaine est le jour de la date spécifique
+        dayNumber = specificDate.getDay()
+      }
 
       const response = await fetch(
         `/api/establishments/${establishmentId}/classes/${classId}/courses/${courseId}/sessions/${sessionData.id}`,
@@ -117,7 +160,7 @@ export function EditSessionForm({
           body: JSON.stringify({
             title: formData.title || null,
             description: formData.description || null,
-            dayOfWeek: Number.parseInt(formData.dayOfWeek),
+            dayOfWeek: dayNumber,
             startTime: startDate.toISOString(),
             endTime: endDate.toISOString(),
             recurrent: formData.recurrent,
@@ -188,24 +231,71 @@ export function EditSessionForm({
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="dayOfWeek" className="text-right">
-                Jour *
+              <Label htmlFor="recurrent" className="text-right">
+                Récurrent
               </Label>
-              <Select value={formData.dayOfWeek} onValueChange={handleSelectDay} required>
-                <SelectTrigger id="dayOfWeek" className="col-span-3">
-                  <SelectValue placeholder="Sélectionner un jour" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">Dimanche</SelectItem>
-                  <SelectItem value="1">Lundi</SelectItem>
-                  <SelectItem value="2">Mardi</SelectItem>
-                  <SelectItem value="3">Mercredi</SelectItem>
-                  <SelectItem value="4">Jeudi</SelectItem>
-                  <SelectItem value="5">Vendredi</SelectItem>
-                  <SelectItem value="6">Samedi</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="col-span-3 flex items-center space-x-2">
+                <Switch id="recurrent" checked={formData.recurrent} onCheckedChange={handleToggleRecurrent} />
+                <Label htmlFor="recurrent" className="text-sm text-muted-foreground">
+                  {formData.recurrent ? "Session hebdomadaire" : "Session unique"}
+                </Label>
+              </div>
             </div>
+
+            {formData.recurrent ? (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="dayOfWeek" className="text-right">
+                  Jour *
+                </Label>
+                <Select value={formData.dayOfWeek} onValueChange={handleSelectDay} required>
+                  <SelectTrigger id="dayOfWeek" className="col-span-3">
+                    <SelectValue placeholder="Sélectionner un jour" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Dimanche</SelectItem>
+                    <SelectItem value="1">Lundi</SelectItem>
+                    <SelectItem value="2">Mardi</SelectItem>
+                    <SelectItem value="3">Mercredi</SelectItem>
+                    <SelectItem value="4">Jeudi</SelectItem>
+                    <SelectItem value="5">Vendredi</SelectItem>
+                    <SelectItem value="6">Samedi</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="specificDate" className="text-right">
+                  Date *
+                </Label>
+                <div className="col-span-3">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        id="specificDate"
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !specificDate && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {specificDate ? format(specificDate, "PPP", { locale: fr }) : "Sélectionner une date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={specificDate}
+                        onSelect={setSpecificDate}
+                        initialFocus
+                        locale={fr}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="startTime" className="text-right">
                 Heure de début *
@@ -246,17 +336,6 @@ export function EditSessionForm({
                 className="col-span-3"
                 placeholder="Optionnel"
               />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="recurrent" className="text-right">
-                Récurrent
-              </Label>
-              <div className="col-span-3 flex items-center space-x-2">
-                <Switch id="recurrent" checked={formData.recurrent} onCheckedChange={handleToggleRecurrent} />
-                <Label htmlFor="recurrent" className="text-sm text-muted-foreground">
-                  {formData.recurrent ? "Session hebdomadaire" : "Session unique"}
-                </Label>
-              </div>
             </div>
           </div>
           {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
