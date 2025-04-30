@@ -41,6 +41,8 @@ export function ProfesseurShell({ children, establishment, user }: ProfesseurShe
     },
     { name: "Notifications", href: `/professeur/notifications?establishmentId=${establishmentId}`, icon: Bell },
     { name: "Évaluations", href: `/professeur/evaluations?establishmentId=${establishmentId}`, icon: ClipboardList },
+    { name: "Messagerie", href: `/professeur/messagerie?establishmentId=${establishmentId}`, icon: ClipboardList },
+
   ]
 
   const userNavigation = [

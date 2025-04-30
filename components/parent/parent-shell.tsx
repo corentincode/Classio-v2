@@ -56,6 +56,8 @@ export function ParentShell({ children }: ParentShellProps) {
     { name: "Absences & retards", href: "/parent/attendance", icon: ClipboardCheck },
     { name: "Enfants", href: "/parent/children", icon: ClipboardCheck },
     { name: "Notes",  href: "/parent/grades", icon: ClipboardList },
+    { name: "Messagerie",  href: "/parent/messagerie", icon: ClipboardList },
+
   ]
 
   return (

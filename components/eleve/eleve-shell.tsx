@@ -57,6 +57,8 @@ export function EleveShell({ children }: EleveShellProps) {
     { name: "Absences & retards", href: "/eleve/attendance", icon: ClipboardCheck },
     { name: "Profil", href: "/profile", icon: Users },
     { name: "Notes",  href: "/eleve/grades", icon: ClipboardList },
+    { name: "Messagerie",  href: "/eleve/messagerie", icon: ClipboardList },
+
   ]
 
   return (

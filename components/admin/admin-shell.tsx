@@ -58,6 +58,8 @@ export function AdminShell({ children }: AdminShellProps) {
     { name: "Profil", href: "/profile", icon: Users },
     { name: "Périodes", href: "/admin/periods", icon: Users },
     { name: "Parents/Eleves", href: "/admin/parent-child", icon: Users },
+    { name: "Messagerie", href: "/admin/messagerie", icon: Users },
+
   ]
 
   return (

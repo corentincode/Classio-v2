@@ -79,6 +79,9 @@ model User {
   studentGrades     Grade[] @relation("StudentGrades")
   gradedBy          Grade[] @relation("TeacherGraded")
   createdEvaluations Evaluation[] @relation("TeacherCreatedEvaluation")
+
+  sentMessages           Message[]
+  conversationParticipant ConversationParticipant[]
 }
 
 model Establishment {
@@ -303,4 +306,49 @@ model Grade {
   gradedById      String
   
   @@unique([studentId, evaluationId])
+}
+
+model Conversation {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  title         String?
+  isGroup       Boolean   @default(false)
+  lastMessageAt DateTime  @default(now())
+  
+  messages      Message[]
+  participants  ConversationParticipant[]
+
+  @@index([lastMessageAt])
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  userId         String
+  conversationId String
+  joinedAt       DateTime     @default(now())
+  lastReadAt     DateTime     @default(now())
+  
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, conversationId])
+  @@index([userId])
+  @@index([conversationId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  content        String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  conversationId String
+  senderId       String
+  
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([createdAt])
 }
