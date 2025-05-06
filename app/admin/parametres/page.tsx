@@ -1,8 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SchoolSettings } from "@/components/admin/school-settings"
-import { UserPermissions } from "@/components/admin/user-permissions"
-import { SystemSettings } from "@/components/admin/system-settings"
 
 export default function SettingsPage() {
   return (
@@ -28,10 +26,8 @@ export default function SettingsPage() {
               <SchoolSettings />
             </TabsContent>
             <TabsContent value="permissions">
-              <UserPermissions />
             </TabsContent>
             <TabsContent value="systeme">
-              <SystemSettings />
             </TabsContent>
           </Tabs>
         </CardContent>

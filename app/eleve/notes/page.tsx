@@ -31,7 +31,7 @@ export default function NotesPage() {
             </TabsList>
 
             <TabsContent value="apercu">
-              <GradesOverview />
+              {/*<GradesOverview />*/}
             </TabsContent>
             <TabsContent value="matieres">
               <GradesBySubject />
