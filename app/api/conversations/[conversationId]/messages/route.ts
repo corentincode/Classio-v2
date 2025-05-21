@@ -43,7 +43,9 @@ export async function GET(req: NextRequest, { params }: { params: { conversation
             role: true,
           },
         },
+        file: true,
       },
+
       orderBy: {
         createdAt: "asc",
       },
@@ -81,7 +83,7 @@ export async function POST(req: NextRequest, { params }: { params: { conversatio
     const { conversationId } = params
     const userId = session.user.id
     const body = await req.json()
-    const { content } = body
+    const { content, fileId} = body
 
     // Vérifier que l'utilisateur est participant à la conversation
     const participant = await prisma.conversationParticipant.findUnique({
@@ -95,6 +97,22 @@ export async function POST(req: NextRequest, { params }: { params: { conversatio
 
     if (!participant) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 })
+    }
+
+    // Vérifier si le contenu ou le fichier est fourni
+    if (!content && !fileId) {
+      return NextResponse.json({ error: "Le message doit contenir du texte ou un fichier" }, { status: 400 })
+    }
+
+    // Si un fileId est fourni, vérifier que le fichier existe
+    if (fileId) {
+      const file = await prisma.file.findUnique({
+        where: { id: fileId },
+      })
+
+      if (!file) {
+        return NextResponse.json({ error: "Fichier non trouvé" }, { status: 404 })
+      }
     }
 
     // Créer le message
@@ -111,6 +129,11 @@ export async function POST(req: NextRequest, { params }: { params: { conversatio
             id: userId,
           },
         },
+        ...(fileId && {
+          file: {
+            connect: { id: fileId },
+          },
+        }),
       },
       include: {
         sender: {
@@ -121,6 +144,7 @@ export async function POST(req: NextRequest, { params }: { params: { conversatio
             role: true,
           },
         },
+        file: true,
       },
     })
 

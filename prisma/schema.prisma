@@ -42,69 +42,69 @@ enum Period {
 }
 
 model User {
-  id                String    @id @default(cuid())
-  email             String    @unique
-  password          String
-  name              String?
-  role              Role      @default(ELEVE)
-  resetToken        String?
-  resetTokenExpiry  DateTime?
-  lastLogin         DateTime?
-  twoFactorEnabled  Boolean   @default(false)
-  twoFactorCode     String?   // Code à 6 chiffres envoyé par email
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  password            String
+  name                String?
+  role                Role      @default(ELEVE)
+  resetToken          String?
+  resetTokenExpiry    DateTime?
+  lastLogin           DateTime?
+  twoFactorEnabled    Boolean   @default(false)
+  twoFactorCode       String? // Code à 6 chiffres envoyé par email
   twoFactorCodeExpiry DateTime? // Date d'expiration du code
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
   // Relation with establishments
-  establishment     Establishment? @relation(name: "UserEstablishment", fields: [establishmentId], references: [id])
-  establishmentId   String?
-  
+  establishment   Establishment? @relation(name: "UserEstablishment", fields: [establishmentId], references: [id])
+  establishmentId String?
+
   // For professors who can teach at multiple schools
-  teachingAt        EstablishmentProfessor[]
+  teachingAt EstablishmentProfessor[]
 
   // Relations for class management
-  studentClasses    StudentClass[]
-  taughtCourses     Course[]
-  
+  studentClasses StudentClass[]
+  taughtCourses  Course[]
+
   // Relations for parents
-  children          ParentChild[]
-  parentOf          ParentChild[]  @relation("ParentToChild")
-  
+  children ParentChild[]
+  parentOf ParentChild[] @relation("ParentToChild")
+
   // Relations for attendance
-  attendanceRecords AttendanceRecord[] @relation("StudentAttendance")
+  attendanceRecords  AttendanceRecord[] @relation("StudentAttendance")
   recordedAttendance AttendanceRecord[] @relation("TeacherRecorded")
-  
+
   // Relations for grades
-  studentGrades     Grade[] @relation("StudentGrades")
-  gradedBy          Grade[] @relation("TeacherGraded")
+  studentGrades      Grade[]      @relation("StudentGrades")
+  gradedBy           Grade[]      @relation("TeacherGraded")
   createdEvaluations Evaluation[] @relation("TeacherCreatedEvaluation")
 
-  sentMessages           Message[]
+  sentMessages            Message[]
   conversationParticipant ConversationParticipant[]
 }
 
 model Establishment {
-  id          String      @id @default(cuid())
-  name        String
-  code        String      @unique
-  address     String?
-  city        String?
-  zipCode     String?
-  country     String?
-  phone       String?
-  email       String?
-  website     String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  address   String?
+  city      String?
+  zipCode   String?
+  country   String?
+  phone     String?
+  email     String?
+  website   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  users       User[]      @relation(name: "UserEstablishment")
-  professors  EstablishmentProfessor[]
-  
+  users      User[]                   @relation(name: "UserEstablishment")
+  professors EstablishmentProfessor[]
+
   // Classes in this establishment
-  classes     Class[]
-  
+  classes Class[]
+
   // Periods configuration
   periodConfig PeriodConfig[]
 }
@@ -117,220 +117,220 @@ model EstablishmentProfessor {
   establishment   Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
   establishmentId String
   createdAt       DateTime      @default(now())
-  
+
   @@unique([professorId, establishmentId])
 }
 
 // New models for class management
 
 model Class {
-  id              String        @id @default(cuid())
-  name            String        // e.g., "6ème A", "Terminale S2"
-  level           String        // e.g., "6ème", "Terminale"
-  section         String?       // e.g., "A", "S2"
-  schoolYear      String        // e.g., "2023-2024"
-  description     String?
-  maxStudents     Int?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  
+  id          String   @id @default(cuid())
+  name        String // e.g., "6ème A", "Terminale S2"
+  level       String // e.g., "6ème", "Terminale"
+  section     String? // e.g., "A", "S2"
+  schoolYear  String // e.g., "2023-2024"
+  description String?
+  maxStudents Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   // Relation with establishment
   establishment   Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
   establishmentId String
-  
+
   // Relations
-  students        StudentClass[]
-  courses         Course[]
-  
+  students StudentClass[]
+  courses  Course[]
+
   @@unique([name, establishmentId, schoolYear])
 }
 
 model StudentClass {
-  id              String        @id @default(cuid())
-  student         User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  studentId       String
-  class           Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
-  classId         String
-  enrollmentDate  DateTime      @default(now())
-  status          String        @default("active") // active, inactive, graduated, etc.
-  
+  id             String   @id @default(cuid())
+  student        User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId      String
+  class          Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId        String
+  enrollmentDate DateTime @default(now())
+  status         String   @default("active") // active, inactive, graduated, etc.
+
   @@unique([studentId, classId])
 }
 
 model Course {
-  id              String        @id @default(cuid())
-  name            String        // e.g., "Mathématiques", "Histoire-Géographie"
-  description     String?
-  color           String?       // For UI display in schedule
-  coefficient     Float         @default(1.0) // Coefficient for grade calculation
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  
+  id          String   @id @default(cuid())
+  name        String // e.g., "Mathématiques", "Histoire-Géographie"
+  description String?
+  color       String? // For UI display in schedule
+  coefficient Float    @default(1.0) // Coefficient for grade calculation
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   // Relations
-  class           Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
-  classId         String
-  professor       User          @relation(fields: [professorId], references: [id])
-  professorId     String
-  sessions        Session[]
-  
+  class       Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId     String
+  professor   User      @relation(fields: [professorId], references: [id])
+  professorId String
+  sessions    Session[]
+
   // Relation for attendance
   attendanceRecords AttendanceRecord[]
-  
+
   // Relation for evaluations
-  evaluations     Evaluation[]
-  
+  evaluations Evaluation[]
+
   @@unique([name, classId, professorId])
 }
 
 model Session {
-  id              String        @id @default(cuid())
-  title           String?
-  description     String?
-  dayOfWeek       Int           // 0-6 (Sunday to Saturday)
-  startTime       DateTime
-  endTime         DateTime
-  recurrent       Boolean       @default(true)
-  room            String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  
+  id          String   @id @default(cuid())
+  title       String?
+  description String?
+  dayOfWeek   Int // 0-6 (Sunday to Saturday)
+  startTime   DateTime
+  endTime     DateTime
+  recurrent   Boolean  @default(true)
+  room        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   // Relation with course
-  course          Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseId        String
-  
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId String
+
   // Relation for attendance
   attendanceRecords AttendanceRecord[]
 }
 
 // Model for parent-child relationships
 model ParentChild {
-  id              String        @id @default(cuid())
-  parent          User          @relation("ParentToChild", fields: [parentId], references: [id], onDelete: Cascade)
-  parentId        String
-  child           User          @relation(fields: [childId], references: [id], onDelete: Cascade)
-  childId         String
-  relationship    String?       // e.g., "father", "mother", "guardian"
-  isPrimary       Boolean       @default(false)
-  createdAt       DateTime      @default(now())
-  
+  id           String   @id @default(cuid())
+  parent       User     @relation("ParentToChild", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId     String
+  child        User     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  childId      String
+  relationship String? // e.g., "father", "mother", "guardian"
+  isPrimary    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
   @@unique([parentId, childId])
 }
 
 // New model for attendance management
 model AttendanceRecord {
-  id              String           @id @default(cuid())
-  date            DateTime
-  status          AttendanceStatus
-  minutesLate     Int?             // For late status, how many minutes late
-  reason          String?          // Reason for absence or lateness
-  excuseNote      String?          // Note for excused absences
-  excuseDocumentUrl String?        // URL to uploaded excuse document
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  
+  id                String           @id @default(cuid())
+  date              DateTime
+  status            AttendanceStatus
+  minutesLate       Int? // For late status, how many minutes late
+  reason            String? // Reason for absence or lateness
+  excuseNote        String? // Note for excused absences
+  excuseDocumentUrl String? // URL to uploaded excuse document
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
   // Relations
-  student         User             @relation("StudentAttendance", fields: [studentId], references: [id], onDelete: Cascade)
-  studentId       String
-  recordedBy      User             @relation("TeacherRecorded", fields: [recordedById], references: [id])
-  recordedById    String
-  course          Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseId        String
-  session         Session?         @relation(fields: [sessionId], references: [id])
-  sessionId       String?
-  
+  student      User     @relation("StudentAttendance", fields: [studentId], references: [id], onDelete: Cascade)
+  studentId    String
+  recordedBy   User     @relation("TeacherRecorded", fields: [recordedById], references: [id])
+  recordedById String
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId     String
+  session      Session? @relation(fields: [sessionId], references: [id])
+  sessionId    String?
+
   @@unique([studentId, courseId, date])
 }
 
 // New models for grades and evaluations
 
 model PeriodConfig {
-  id              String        @id @default(cuid())
-  period          Period
-  name            String        // Custom name for the period
-  startDate       DateTime
-  endDate         DateTime
-  schoolYear      String        // e.g., "2023-2024"
-  isActive        Boolean       @default(true)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  
+  id         String   @id @default(cuid())
+  period     Period
+  name       String // Custom name for the period
+  startDate  DateTime
+  endDate    DateTime
+  schoolYear String // e.g., "2023-2024"
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
   // Relation with establishment
   establishment   Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
   establishmentId String
-  
+
   // Relation with evaluations
-  evaluations     Evaluation[]
-  
+  evaluations Evaluation[]
+
   @@unique([period, schoolYear, establishmentId])
 }
 
 model Evaluation {
-  id              String        @id @default(cuid())
-  title           String
-  description     String?
-  type            EvaluationType
-  date            DateTime
-  maxGrade        Float         @default(20.0)
-  coefficient     Float         @default(1.0)
-  isPublished     Boolean       @default(false)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  type        EvaluationType
+  date        DateTime
+  maxGrade    Float          @default(20.0)
+  coefficient Float          @default(1.0)
+  isPublished Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
   // Relations
-  course          Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseId        String
-  createdBy       User          @relation("TeacherCreatedEvaluation", fields: [createdById], references: [id])
-  createdById     String
-  period          PeriodConfig? @relation(fields: [periodId], references: [id])
-  periodId        String?
-  
+  course      Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId    String
+  createdBy   User          @relation("TeacherCreatedEvaluation", fields: [createdById], references: [id])
+  createdById String
+  period      PeriodConfig? @relation(fields: [periodId], references: [id])
+  periodId    String?
+
   // Relation with grades
-  grades          Grade[]
+  grades Grade[]
 }
 
 model Grade {
-  id              String        @id @default(cuid())
-  value           Float
-  comment         String?
-  isAbsent        Boolean       @default(false)
-  isExcused       Boolean       @default(false)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  
+  id        String   @id @default(cuid())
+  value     Float
+  comment   String?
+  isAbsent  Boolean  @default(false)
+  isExcused Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  student         User          @relation("StudentGrades", fields: [studentId], references: [id], onDelete: Cascade)
-  studentId       String
-  evaluation      Evaluation    @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
-  evaluationId    String
-  gradedBy        User          @relation("TeacherGraded", fields: [gradedById], references: [id])
-  gradedById      String
-  
+  student      User       @relation("StudentGrades", fields: [studentId], references: [id], onDelete: Cascade)
+  studentId    String
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  evaluationId String
+  gradedBy     User       @relation("TeacherGraded", fields: [gradedById], references: [id])
+  gradedById   String
+
   @@unique([studentId, evaluationId])
 }
 
 model Conversation {
-  id            String    @id @default(cuid())
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   title         String?
-  isGroup       Boolean   @default(false)
-  lastMessageAt DateTime  @default(now())
-  
-  messages      Message[]
-  participants  ConversationParticipant[]
+  isGroup       Boolean  @default(false)
+  lastMessageAt DateTime @default(now())
+
+  messages     Message[]
+  participants ConversationParticipant[]
 
   @@index([lastMessageAt])
 }
 
 model ConversationParticipant {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   userId         String
   conversationId String
-  joinedAt       DateTime     @default(now())
-  lastReadAt     DateTime     @default(now())
-  
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  joinedAt       DateTime @default(now())
+  lastReadAt     DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@unique([userId, conversationId])
   @@index([userId])
@@ -344,11 +344,30 @@ model Message {
   updatedAt      DateTime     @updatedAt
   conversationId String
   senderId       String
-  
+  file           File[]
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([conversationId])
   @@index([senderId])
   @@index([createdAt])
+}
+
+// Modèle pour les fichiers partagés
+model File {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  size      Int
+  url       String
+  path      String // Chemin sur le serveur VPS
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  message   Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String?
+
+  @@index([messageId])
+  @@map("files")
 }

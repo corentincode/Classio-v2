@@ -33,13 +33,13 @@ interface Message {
     email: string
     role: string
   }
-  file?: {
+  files?: {
     id: string
     name: string
     type: string
     size: number
     url: string
-  } | null
+  }[]
 }
 
 interface ConversationProps {
@@ -367,9 +367,11 @@ export default function Conversation({ conversationId, currentUser, initialConve
                               )}
                           >
                             {message.content}
-                            {message.file && (
+                            {message.files && message.files.length > 0 && (
                                 <div className="mt-2">
-                                  <FilePreview file={message.file} />
+                                  {message.files.map((file) => (
+                                      <FilePreview key={file.id} file={file} />
+                                  ))}
                                 </div>
                             )}
                           </div>
