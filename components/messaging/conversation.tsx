@@ -97,6 +97,7 @@ export default function Conversation({ conversationId, currentUser, initialConve
         const response = await fetch(`/api/conversations/${conversationId}/messages`)
         if (response.ok) {
           const data = await response.json()
+          console.log("Messages récupérés:", data) // Ajout de log pour déboguer
           setMessages(data)
         }
       } catch (error) {
@@ -189,6 +190,7 @@ export default function Conversation({ conversationId, currentUser, initialConve
         if (uploadResponse.ok) {
           const fileData = await uploadResponse.json()
           fileId = fileData.id
+          console.log("Fichier téléchargé avec succès:", fileData) // Ajout de log pour déboguer
         } else {
           throw new Error("Échec du téléchargement du fichier")
         }
@@ -208,6 +210,7 @@ export default function Conversation({ conversationId, currentUser, initialConve
 
       if (response.ok) {
         const message = await response.json()
+        console.log("Message envoyé avec succès:", message) // Ajout de log pour déboguer
         setMessages((prev) => [...prev, message])
         setNewMessage("")
         setSelectedFile(null)
@@ -341,6 +344,8 @@ export default function Conversation({ conversationId, currentUser, initialConve
                   const isOwn = message.sender.id === currentUser.id
                   const showAvatar = index === 0 || messages[index - 1].sender.id !== message.sender.id
 
+                  console.log("Rendu du message:", message.id, "Files:", message.files) // Ajout de log pour déboguer
+
                   return (
                       <div key={message.id} className={cn("flex gap-2", isOwn ? "justify-end" : "justify-start")}>
                         {!isOwn && showAvatar && (
@@ -367,10 +372,16 @@ export default function Conversation({ conversationId, currentUser, initialConve
                               )}
                           >
                             {message.content}
-                            {message.files && message.files.length > 0 && (
+
+                            {/* Vérification et affichage des fichiers */}
+                            {message.file && message.file.length > 0 && (
                                 <div className="mt-2">
-                                  {message.files.map((file) => (
-                                      <FilePreview key={file.id} file={file} />
+                                  {message.file.map((file) => (
+                                      <div key={file.id} className="mt-2 p-2 border rounded">
+                                        <p>Fichier: {file.type}</p>
+
+                                        <FilePreview key={file.id} file={file} />
+                                      </div>
                                   ))}
                                 </div>
                             )}

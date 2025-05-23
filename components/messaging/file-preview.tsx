@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { File, FileText, ImageIcon, Film, Music, Archive, Download, Eye } from 'lucide-react'
+import { File, FileText, ImageIcon, Film, Music, Archive, Download, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
@@ -18,6 +18,8 @@ interface FilePreviewProps {
 
 export default function FilePreview({ file }: FilePreviewProps) {
     const [previewOpen, setPreviewOpen] = useState(false)
+
+    console.log("FilePreview rendu avec:", file) // Ajout de log pour déboguer
 
     const getFileIcon = () => {
         const type = file.type.split("/")[0]
@@ -45,12 +47,15 @@ export default function FilePreview({ file }: FilePreviewProps) {
         const k = 1024
         const sizes = ["Bytes", "KB", "MB", "GB"]
         const i = Math.floor(Math.log(bytes) / Math.log(k))
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+        return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
     }
 
     const isPreviewable = () => {
         return file.type.startsWith("image/") || file.type === "application/pdf"
     }
+
+    // Utiliser l'API de téléchargement par ID
+    const downloadUrl = `/api/files/${file.id}`
 
     return (
         <>
@@ -94,26 +99,17 @@ export default function FilePreview({ file }: FilePreviewProps) {
                 <DialogContent className="max-w-4xl">
                     {file.type.startsWith("image/") ? (
                         <div className="relative h-[70vh] w-full">
-                            <Image
-                                src={file.url || "/placeholder.svg"}
-                                alt={file.name}
-                                fill
-                                className="object-contain"
-                            />
+                            <Image src={file.url || "/placeholder.svg"} alt={file.name} fill className="object-contain" />
                         </div>
                     ) : file.type === "application/pdf" ? (
-                        <iframe
-                            src={`${file.url}#toolbar=0`}
-                            className="w-full h-[70vh]"
-                            title={file.name}
-                        />
+                        <iframe src={`${file.url}#toolbar=0`} className="w-full h-[70vh]" title={file.name} />
                     ) : (
                         <div className="flex flex-col items-center justify-center p-8">
                             <File className="h-16 w-16 text-muted-foreground mb-4" />
                             <p className="text-lg font-medium mb-2">{file.name}</p>
                             <p className="text-sm text-muted-foreground mb-4">{formatFileSize(file.size)}</p>
                             <Button asChild>
-                                <a href={file.url} download={file.name} target="_blank" rel="noopener noreferrer">
+                                <a href={downloadUrl} download={file.name} target="_blank" rel="noopener noreferrer">
                                     <Download className="h-4 w-4 mr-2" />
                                     Télécharger le fichier
                                 </a>

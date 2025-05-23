@@ -6,14 +6,14 @@ import ConversationList from "@/components/messaging/conversation-list"
 import Conversation from "@/components/messaging/conversation"
 
 interface AdminMessagerieConversationPageProps {
-  params: {
+  params: Promise<{
     conversationId: string
-  }
+  }>
 }
 
 export default async function AdminMessagerieConversationPage({ params }: AdminMessagerieConversationPageProps) {
   // Attendre les paramètres avant de les utiliser
-  const conversationId = await params.conversationId
+  const { conversationId } = await params
   const session = await getServerSession(authOptions)
 
   if (!session?.user) {
@@ -65,18 +65,15 @@ export default async function AdminMessagerieConversationPage({ params }: AdminM
   }
 
   return (
-    <div className="h-full">
-      <div className="h-full flex">
-        <div className="hidden md:block w-80 border-r h-full">
-          <ConversationList
-            currentUser={session.user}
-            establishmentId={establishmentId}
-          />
-        </div>
-        <div className="flex-1 h-full">
-          <Conversation conversationId={conversationId} currentUser={session.user} />
+      <div className="h-full">
+        <div className="h-full flex">
+          <div className="hidden md:block w-80 border-r h-full">
+            <ConversationList currentUser={session.user} establishmentId={establishmentId} />
+          </div>
+          <div className="flex-1 h-full">
+            <Conversation conversationId={conversationId} currentUser={session.user} />
+          </div>
         </div>
       </div>
-    </div>
   )
 }

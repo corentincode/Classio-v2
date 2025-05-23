@@ -12,7 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: { conversation
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 })
     }
 
-    const { conversationId } = params
+    const { conversationId } = await params
     const userId = session.user.id
 
     // Vérifier que l'utilisateur est participant à la conversation
