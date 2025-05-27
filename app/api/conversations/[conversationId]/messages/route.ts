@@ -29,7 +29,7 @@ export async function GET(req: NextRequest, { params }: { params: { conversation
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 })
     }
 
-    // Récupérer les messages
+    // Récupérer les messages avec les fichiers
     const messages = await prisma.message.findMany({
       where: {
         conversationId,
@@ -43,11 +43,28 @@ export async function GET(req: NextRequest, { params }: { params: { conversation
             role: true,
           },
         },
+        files: true, // Inclure les fichiers associés
       },
       orderBy: {
         createdAt: "asc",
       },
     })
+
+    // Formater les messages pour correspondre à l'interface du frontend
+    const formattedMessages = messages.map((message) => ({
+      id: message.id,
+      content: message.content,
+      createdAt: message.createdAt.toISOString(),
+      senderId: message.senderId,
+      sender: message.sender,
+      file: message.files[0] ? {
+        id: message.files[0].id,
+        name: message.files[0].name,
+        type: message.files[0].type,
+        size: message.files[0].size,
+        url: message.files[0].url,
+      } : null,
+    }))
 
     // Mettre à jour le dernier message lu
     await prisma.conversationParticipant.update({
@@ -62,7 +79,7 @@ export async function GET(req: NextRequest, { params }: { params: { conversation
       },
     })
 
-    return NextResponse.json(messages)
+    return NextResponse.json(formattedMessages)
   } catch (error) {
     console.error("Erreur lors de la récupération des messages:", error)
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 })
@@ -81,7 +98,7 @@ export async function POST(req: NextRequest, { params }: { params: { conversatio
     const { conversationId } = params
     const userId = session.user.id
     const body = await req.json()
-    const { content } = body
+    const { content, fileId } = body // Ajouter fileId
 
     // Vérifier que l'utilisateur est participant à la conversation
     const participant = await prisma.conversationParticipant.findUnique({
@@ -97,21 +114,40 @@ export async function POST(req: NextRequest, { params }: { params: { conversatio
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 })
     }
 
-    // Créer le message
-    const message = await prisma.message.create({
-      data: {
-        content,
-        conversation: {
-          connect: {
-            id: conversationId,
-          },
-        },
-        sender: {
-          connect: {
-            id: userId,
-          },
+    // Créer le message avec ou sans fichier
+    const messageData: any = {
+      content: content || "",
+      conversation: {
+        connect: {
+          id: conversationId,
         },
       },
+      sender: {
+        connect: {
+          id: userId,
+        },
+      },
+    }
+
+    // Si un fichier est fourni, l'associer au message
+    if (fileId) {
+      // Vérifier que le fichier existe
+      const file = await prisma.files.findUnique({
+        where: { id: fileId },
+      })
+
+      if (!file) {
+        return NextResponse.json({ error: "Fichier non trouvé" }, { status: 404 })
+      }
+
+      // Associer le fichier au message
+      messageData.files = {
+        connect: { id: fileId },
+      }
+    }
+
+    const message = await prisma.message.create({
+      data: messageData,
       include: {
         sender: {
           select: {
@@ -121,6 +157,7 @@ export async function POST(req: NextRequest, { params }: { params: { conversatio
             role: true,
           },
         },
+        files: true,
       },
     })
 
@@ -147,7 +184,23 @@ export async function POST(req: NextRequest, { params }: { params: { conversatio
       },
     })
 
-    return NextResponse.json(message)
+    // Formater la réponse pour correspondre à l'interface du frontend
+    const formattedMessage = {
+      id: message.id,
+      content: message.content,
+      createdAt: message.createdAt.toISOString(),
+      senderId: message.senderId,
+      sender: message.sender,
+      file: message.files[0] ? {
+        id: message.files[0].id,
+        name: message.files[0].name,
+        type: message.files[0].type,
+        size: message.files[0].size,
+        url: message.files[0].url,
+      } : null,
+    }
+
+    return NextResponse.json(formattedMessage)
   } catch (error) {
     console.error("Erreur lors de l'envoi du message:", error)
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 })

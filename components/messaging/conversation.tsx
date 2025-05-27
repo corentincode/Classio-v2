@@ -177,7 +177,8 @@ export default function Conversation({ conversationId, currentUser, initialConve
             return prev + 10
           })
         }, 300)
-
+        console.log(selectedFile);
+        
         const uploadResponse = await fetch("/api/upload", {
           method: "POST",
           body: formData,
