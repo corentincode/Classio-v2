@@ -1,7 +1,4 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { writeFile, mkdir } from "fs/promises"
-import { existsSync } from "fs"
-import path from "path"
 import prisma from "@/lib/prisma"
 
 export async function POST(request: NextRequest) {
@@ -37,23 +34,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Type de fichier non autorisé" }, { status: 400 })
     }
 
-    // Créer le dossier uploads s'il n'existe pas
-    const uploadDir = path.join(process.cwd(), "public", "uploads")
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true })
+    // Préparer les données pour l'envoi vers votre VPS
+    const uploadFormData = new FormData()
+    uploadFormData.append("file", file)
+    uploadFormData.append("folder", "messages") // Organiser les fichiers par dossier
+
+    // Envoyer le fichier vers votre VPS
+    const uploadResponse = await fetch(`${process.env.VPS_API_URL}/api/upload`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.VPS_API_KEY}`,
+      },
+      body: uploadFormData,
+    })
+
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text()
+      console.error("Erreur VPS:", errorText)
+      throw new Error(`Erreur lors de l'upload vers le VPS: ${uploadResponse.status}`)
     }
 
-    // Générer un nom de fichier unique
-    const timestamp = Date.now()
-    const randomString = Math.random().toString(36).substring(2, 15)
-    const fileExtension = path.extname(file.name)
-    const fileName = `${timestamp}-${randomString}${fileExtension}`
-    const filePath = path.join(uploadDir, fileName)
+    const uploadResult = await uploadResponse.json()
+    console.log("Réponse de l'API VPS:", uploadResult)
 
-    // Convertir le fichier en buffer et l'écrire
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
+    // CORRECTION : Utiliser l'URL complète retournée par l'API VPS
+    // L'API VPS retourne maintenant uploadResult.url avec le chemin complet
+    const fileUrl = `${process.env.VPS_STORAGE_URL}${uploadResult.url}`
+
+    // Alternative si VPS_STORAGE_URL contient déjà le domaine complet :
+    // const fileUrl = uploadResult.url.startsWith('http')
+    //   ? uploadResult.url
+    //   : `${process.env.VPS_STORAGE_URL}${uploadResult.url}`
+
+    console.log("URL finale du fichier:", fileUrl)
 
     // Sauvegarder les métadonnées en base de données
     const savedFile = await prisma.files.create({
@@ -61,11 +74,14 @@ export async function POST(request: NextRequest) {
         name: file.name,
         type: file.type,
         size: file.size,
-        url: `/uploads/${fileName}`,
-        path: filePath,
-        updatedAt: new Date(), // Ajouter le champ updatedAt manquant
+        url: fileUrl, // URL complète avec la structure de dossiers
+        path: uploadResult.path || uploadResult.filename, // Chemin relatif pour référence
+        updatedAt: new Date(),
       },
     })
+
+    console.log(`Fichier uploadé vers VPS: ${file.name}`)
+    console.log(`URL du fichier: ${fileUrl}`)
 
     return NextResponse.json({
       id: savedFile.id,
@@ -76,6 +92,12 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("Erreur lors de l'upload:", error)
-    return NextResponse.json({ error: "Erreur lors de l'upload du fichier" }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Erreur lors de l'upload du fichier",
+        details: error instanceof Error ? error.message : "Erreur inconnue",
+      },
+      { status: 500 },
+    )
   }
 }

@@ -1,127 +1,129 @@
 "use client"
 
-import { useState } from "react"
-import { File, FileText, ImageIcon, Film, Music, Archive, Download, Eye } from 'lucide-react'
+import { Download, File, ImageIcon, FileText, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import Image from "next/image"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
 
 interface FilePreviewProps {
-    file: {
-        id: string
-        name: string
-        type: string
-        size: number
-        url: string
-    }
+  file: {
+    id: string
+    name: string
+    type: string
+    size: number
+    url: string
+  }
 }
 
 export default function FilePreview({ file }: FilePreviewProps) {
-    const [previewOpen, setPreviewOpen] = useState(false)
-
-    const getFileIcon = () => {
-        const type = file.type.split("/")[0]
-        switch (type) {
-            case "image":
-                return <ImageIcon className="h-4 w-4" />
-            case "video":
-                return <Film className="h-4 w-4" />
-            case "audio":
-                return <Music className="h-4 w-4" />
-            case "application":
-                if (file.type.includes("pdf")) {
-                    return <FileText className="h-4 w-4" />
-                } else if (file.type.includes("zip") || file.type.includes("rar") || file.type.includes("tar")) {
-                    return <Archive className="h-4 w-4" />
-                }
-                return <File className="h-4 w-4" />
-            default:
-                return <File className="h-4 w-4" />
-        }
+  const getFileIcon = () => {
+    if (file.type.startsWith("image/")) {
+      return <ImageIcon className="h-4 w-4 text-blue-500" />
+    } else if (file.type === "application/pdf") {
+      return <FileText className="h-4 w-4 text-red-500" />
+    } else {
+      return <File className="h-4 w-4 text-gray-500" />
     }
+  }
 
-    const formatFileSize = (bytes: number) => {
-        if (bytes === 0) return "0 Bytes"
-        const k = 1024
-        const sizes = ["Bytes", "KB", "MB", "GB"]
-        const i = Math.floor(Math.log(bytes) / Math.log(k))
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes"
+    const k = 1024
+    const sizes = ["Bytes", "KB", "MB", "GB"]
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+  }
+
+  // SOLUTION 1: Téléchargement via fetch avec blob
+  const handleDownload = async () => {
+    try {
+      const response = await fetch(file.url)
+      const blob = await response.blob()
+
+      // Créer un URL temporaire pour le blob
+      const blobUrl = window.URL.createObjectURL(blob)
+
+      // Créer un lien temporaire et le cliquer
+      const link = document.createElement("a")
+      link.href = blobUrl
+      link.download = file.name // Force le téléchargement avec le nom original
+      document.body.appendChild(link)
+      link.click()
+
+      // Nettoyer
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(blobUrl)
+    } catch (error) {
+      console.error("Erreur lors du téléchargement:", error)
+      // Fallback vers la méthode simple
+      handleDownloadFallback()
     }
+  }
 
-    const isPreviewable = () => {
-        return file.type.startsWith("image/") || file.type === "application/pdf"
-    }
+  // SOLUTION 2: Fallback - Téléchargement simple avec attribut download
+  const handleDownloadFallback = () => {
+    const link = document.createElement("a")
+    link.href = file.url
+    link.download = file.name
+    link.target = "_blank"
+    link.rel = "noopener noreferrer"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
-    return (
-        <>
-            <div className="border rounded-lg p-2 bg-background/50 max-w-xs">
-                <div className="flex items-center gap-2 mb-1">
-                    {getFileIcon()}
-                    <div className="text-sm font-medium truncate flex-1">{file.name}</div>
-                </div>
-                <div className="text-xs text-muted-foreground mb-2">{formatFileSize(file.size)}</div>
+  const handleView = () => {
+    window.open(file.url, "_blank", "noopener,noreferrer")
+  }
 
-                {file.type.startsWith("image/") && (
-                    <div className="relative h-32 w-full mb-2 rounded overflow-hidden">
-                        <Image
-                            src={file.url || "/placeholder.svg"}
-                            alt={file.name}
-                            fill
-                            className="object-cover"
-                            onClick={() => setPreviewOpen(true)}
-                        />
-                    </div>
-                )}
-
-                <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="w-full" asChild>
-                        <a href={file.url} download={file.name} target="_blank" rel="noopener noreferrer">
-                            <Download className="h-3.5 w-3.5 mr-1" />
-                            Télécharger
-                        </a>
-                    </Button>
-
-                    {isPreviewable() && (
-                        <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}>
-                            <Eye className="h-3.5 w-3.5 mr-1" />
-                            Aperçu
-                        </Button>
-                    )}
-                </div>
+  return (
+    <div className="border rounded-lg p-3 bg-muted/30 max-w-sm">
+      {file.type.startsWith("image/") ? (
+        <div className="space-y-2">
+          <img
+            src={file.url || "/placeholder.svg"}
+            alt={file.name}
+            className="w-full h-32 object-cover rounded cursor-pointer"
+            onClick={handleView}
+            onError={(e) => {
+              e.currentTarget.style.display = "none"
+            }}
+          />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              {getFileIcon()}
+              <div className="min-w-0">
+                <p className="text-xs font-medium truncate">{file.name}</p>
+                <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+              </div>
             </div>
-
-            <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-                <DialogContent className="max-w-4xl">
-                    {file.type.startsWith("image/") ? (
-                        <div className="relative h-[70vh] w-full">
-                            <Image
-                                src={file.url || "/placeholder.svg"}
-                                alt={file.name}
-                                fill
-                                className="object-contain"
-                            />
-                        </div>
-                    ) : file.type === "application/pdf" ? (
-                        <iframe
-                            src={`${file.url}#toolbar=0`}
-                            className="w-full h-[70vh]"
-                            title={file.name}
-                        />
-                    ) : (
-                        <div className="flex flex-col items-center justify-center p-8">
-                            <File className="h-16 w-16 text-muted-foreground mb-4" />
-                            <p className="text-lg font-medium mb-2">{file.name}</p>
-                            <p className="text-sm text-muted-foreground mb-4">{formatFileSize(file.size)}</p>
-                            <Button asChild>
-                                <a href={file.url} download={file.name} target="_blank" rel="noopener noreferrer">
-                                    <Download className="h-4 w-4 mr-2" />
-                                    Télécharger le fichier
-                                </a>
-                            </Button>
-                        </div>
-                    )}
-                </DialogContent>
-            </Dialog>
-        </>
-    )
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleView} title="Voir">
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleDownload} title="Télécharger">
+                <Download className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            {getFileIcon()}
+            <div className="min-w-0">
+              <p className="text-xs font-medium truncate">{file.name}</p>
+              <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+            </div>
+          </div>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleView} title="Voir">
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleDownload} title="Télécharger">
+              <Download className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
